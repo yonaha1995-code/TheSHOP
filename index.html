@@ -1,0 +1,1469 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>향균케어 재고관리 시스템</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0f1e;
+    --surface: #111827;
+    --surface2: #1a2235;
+    --border: #1e3a5f;
+    --accent: #3b82f6;
+    --accent2: #06b6d4;
+    --green: #10b981;
+    --red: #ef4444;
+    --yellow: #f59e0b;
+    --text: #e2e8f0;
+    --text2: #94a3b8;
+    --text3: #475569;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Noto Sans KR', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+  /* HEADER */
+  .header {
+    background: linear-gradient(135deg, #0d1b3e 0%, #1a2a5e 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 0 2rem;
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+    height: 64px;
+    position: sticky; top: 0; z-index: 100;
+  }
+  .header-logo {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--accent2);
+    letter-spacing: 0.05em;
+  }
+  .header-title {
+    font-size: 0.95rem;
+    color: var(--text2);
+    border-left: 1px solid var(--border);
+    padding-left: 1.5rem;
+  }
+  .header-right { margin-left: auto; display: flex; align-items: center; gap: 1rem; }
+  .badge-live {
+    display: flex; align-items: center; gap: 0.4rem;
+    background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3);
+    color: var(--green); font-size: 0.75rem; padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+  }
+  .badge-live::before {
+    content: ''; width: 6px; height: 6px; background: var(--green);
+    border-radius: 50%; animation: pulse 1.5s infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  /* SIDEBAR NAV */
+  .layout { display: flex; min-height: calc(100vh - 64px); }
+  .sidebar {
+    width: 220px; background: var(--surface); border-right: 1px solid var(--border);
+    padding: 1.5rem 0; flex-shrink: 0;
+  }
+  .nav-label {
+    font-size: 0.65rem; letter-spacing: 0.1em; color: var(--text3);
+    text-transform: uppercase; padding: 0 1.25rem; margin: 1rem 0 0.5rem;
+  }
+  .nav-item {
+    display: flex; align-items: center; gap: 0.75rem;
+    padding: 0.7rem 1.25rem; cursor: pointer; transition: all 0.15s;
+    font-size: 0.875rem; color: var(--text2); border-left: 3px solid transparent;
+  }
+  .nav-item:hover { background: rgba(59,130,246,0.08); color: var(--text); }
+  .nav-item.active {
+    background: rgba(59,130,246,0.12); color: var(--accent);
+    border-left-color: var(--accent);
+  }
+  .nav-icon { font-size: 1rem; width: 1.25rem; text-align: center; }
+
+  /* MAIN */
+  .main { flex: 1; padding: 2rem; overflow-x: hidden; }
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* CARDS */
+  .stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+  .stat-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 1.25rem 1.5rem;
+  }
+  .stat-label { font-size: 0.75rem; color: var(--text2); margin-bottom: 0.5rem; }
+  .stat-value { font-size: 2rem; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+  .stat-sub { font-size: 0.75rem; color: var(--text3); margin-top: 0.25rem; }
+  .stat-blue .stat-value { color: var(--accent); }
+  .stat-green .stat-value { color: var(--green); }
+  .stat-yellow .stat-value { color: var(--yellow); }
+  .stat-red .stat-value { color: var(--red); }
+
+  /* SECTION */
+  .section { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 1.5rem; }
+  .section-header {
+    padding: 1rem 1.5rem; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .section-title { font-size: 0.9rem; font-weight: 600; }
+  .section-body { padding: 1.5rem; }
+
+  /* TABLE */
+  .tbl { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  .tbl th {
+    padding: 0.6rem 0.75rem; text-align: left;
+    font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em;
+    color: var(--text3); border-bottom: 1px solid var(--border);
+  }
+  .tbl td { padding: 0.7rem 0.75rem; border-bottom: 1px solid rgba(30,58,95,0.4); }
+  .tbl tbody tr:hover { background: rgba(59,130,246,0.04); }
+  .tbl tbody tr:last-child td { border-bottom: none; }
+
+  /* CHIPS */
+  .chip {
+    display: inline-block; padding: 0.15rem 0.6rem;
+    border-radius: 20px; font-size: 0.72rem; font-weight: 500;
+  }
+  .chip-blue { background: rgba(59,130,246,0.15); color: #93c5fd; }
+  .chip-green { background: rgba(16,185,129,0.15); color: #6ee7b7; }
+  .chip-yellow { background: rgba(245,158,11,0.15); color: #fcd34d; }
+  .chip-red { background: rgba(239,68,68,0.15); color: #fca5a5; }
+
+  /* FORMS */
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  .form-group { display: flex; flex-direction: column; gap: 0.4rem; }
+  .form-group.full { grid-column: 1/-1; }
+  label { font-size: 0.78rem; color: var(--text2); }
+  input, select, textarea {
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--text); border-radius: 8px; padding: 0.6rem 0.85rem;
+    font-size: 0.875rem; font-family: inherit; transition: border-color 0.15s;
+    outline: none;
+  }
+  input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+  select option { background: var(--surface2); }
+
+  /* BUTTONS */
+  .btn {
+    padding: 0.6rem 1.25rem; border-radius: 8px; border: none;
+    cursor: pointer; font-size: 0.875rem; font-family: inherit;
+    font-weight: 500; transition: all 0.15s; display: inline-flex;
+    align-items: center; gap: 0.5rem;
+  }
+  .btn-primary { background: var(--accent); color: white; }
+  .btn-primary:hover { background: #2563eb; }
+  .btn-success { background: var(--green); color: white; }
+  .btn-success:hover { background: #059669; }
+  .btn-danger { background: var(--red); color: white; }
+  .btn-danger:hover { background: #dc2626; }
+  .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--text2); }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-sm { padding: 0.35rem 0.75rem; font-size: 0.78rem; }
+
+  /* GOOGLE SHEETS SETUP */
+  .setup-box {
+    background: linear-gradient(135deg, rgba(59,130,246,0.08), rgba(6,182,212,0.08));
+    border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+  .setup-title { font-size: 0.85rem; font-weight: 600; color: var(--accent2); margin-bottom: 0.75rem; }
+  .setup-row { display: flex; gap: 0.75rem; align-items: center; }
+  .setup-row input { flex: 1; }
+  .connected-badge {
+    display: flex; align-items: center; gap: 0.5rem;
+    color: var(--green); font-size: 0.8rem; margin-top: 0.5rem;
+  }
+
+  /* SERIAL PRINT */
+  .serial-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.75rem; }
+  .serial-card {
+    background: white; color: #1a1a1a; border-radius: 8px;
+    padding: 1rem; text-align: center; border: 1px solid #e5e7eb;
+  }
+  .serial-card .sc-brand { font-size: 0.6rem; color: #6b7280; margin-bottom: 0.25rem; }
+  .serial-card .sc-name { font-size: 0.85rem; font-weight: 700; margin-bottom: 0.4rem; }
+  .serial-card .sc-num { font-family: 'JetBrains Mono', monospace; font-size: 1.1rem; font-weight: 700; color: #1d4ed8; letter-spacing: 0.1em; }
+  .serial-card .sc-date { font-size: 0.65rem; color: #9ca3af; margin-top: 0.3rem; }
+
+  /* MONTH TABS */
+  .month-tabs { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem; }
+  .month-tab {
+    padding: 0.4rem 1rem; border-radius: 20px; font-size: 0.8rem; cursor: pointer;
+    border: 1px solid var(--border); color: var(--text2); transition: all 0.15s;
+    background: transparent;
+  }
+  .month-tab.active { background: var(--accent); border-color: var(--accent); color: white; }
+  .month-tab:hover:not(.active) { border-color: var(--accent); color: var(--accent); }
+
+  /* MODAL */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7); z-index: 200; align-items: center; justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px; padding: 2rem; min-width: 480px; max-width: 600px; width: 90%;
+    max-height: 90vh; overflow-y: auto;
+  }
+  .modal-title { font-size: 1rem; font-weight: 700; margin-bottom: 1.5rem; }
+  .modal-footer { display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 1.5rem; }
+
+  /* ALERT */
+  .alert {
+    padding: 0.75rem 1rem; border-radius: 8px; font-size: 0.85rem;
+    margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;
+  }
+  .alert-info { background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.3); color: #93c5fd; }
+  .alert-success { background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3); color: #6ee7b7; }
+  .alert-warn { background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.3); color: #fcd34d; }
+
+  /* LOW STOCK */
+  .low-stock-row td { color: var(--yellow) !important; }
+
+  /* PROGRESS BAR */
+  .progress-bar { background: var(--surface2); border-radius: 4px; height: 6px; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 4px; transition: width 0.3s; }
+
+  /* PRINT */
+  @media print {
+    body { background: white !important; color: #1a1a1a !important; }
+    .header, .sidebar, .no-print { display: none !important; }
+    .main { padding: 0 !important; }
+    .serial-card { background: white !important; border: 1px solid #ccc !important; page-break-inside: avoid; }
+    .serial-card .sc-num { color: #1d4ed8 !important; }
+    .section-header, .section { background: white !important; border-color: #e5e7eb !important; }
+    .section-title { color: #1a1a1a !important; }
+  }
+
+  .divider { border: none; border-top: 1px solid var(--border); margin: 1rem 0; }
+  .text-mono { font-family: 'JetBrains Mono', monospace; }
+  .flex { display: flex; }
+  .gap-2 { gap: 0.5rem; }
+  .items-center { align-items: center; }
+  .justify-between { justify-content: space-between; }
+  .mb-1 { margin-bottom: 0.25rem; }
+  .mb-2 { margin-bottom: 0.5rem; }
+  .mb-4 { margin-bottom: 1rem; }
+  .text-sm { font-size: 0.85rem; }
+  .text-xs { font-size: 0.75rem; }
+  .text-muted { color: var(--text2); }
+
+  .empty-state { text-align: center; padding: 3rem; color: var(--text3); }
+  .empty-state .empty-icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
+</style>
+</head>
+<body>
+
+<!-- PASSWORD LOCK -->
+<div id="lockScreen" style="
+  position:fixed;inset:0;z-index:9999;
+  background:linear-gradient(135deg,#0a0f1e 0%,#0d1b3e 100%);
+  display:flex;align-items:center;justify-content:center;
+">
+  <div style="text-align:center;width:340px;">
+    <div style="font-size:2.5rem;margin-bottom:1rem;">🔐</div>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:1.1rem;color:#06b6d4;font-weight:600;margin-bottom:0.4rem;">INVENTORY SYSTEM</div>
+    <div style="font-size:0.8rem;color:#475569;margin-bottom:2rem;">향균케어 방향제 기기 재고관리</div>
+    <input id="pwInput" type="password" placeholder="비밀번호를 입력하세요"
+      style="width:100%;padding:0.85rem 1rem;border-radius:10px;border:1px solid #1e3a5f;
+      background:#111827;color:#e2e8f0;font-size:0.95rem;text-align:center;
+      outline:none;letter-spacing:0.15em;margin-bottom:0.75rem;"
+      onkeydown="if(event.key==='Enter')checkPW()"
+    >
+    <div id="pwError" style="color:#ef4444;font-size:0.78rem;margin-bottom:0.75rem;min-height:1.2em;"></div>
+    <button onclick="checkPW()" style="
+      width:100%;padding:0.85rem;border-radius:10px;border:none;
+      background:#3b82f6;color:white;font-size:0.95rem;font-weight:600;
+      cursor:pointer;font-family:'Noto Sans KR',sans-serif;
+    ">입장하기</button>
+  </div>
+</div>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="header-logo">📦 INVENTORY</div>
+  <div class="header-title">향균케어 방향제 기기 재고관리 시스템</div>
+  <div class="header-right">
+    <div id="syncStatus" class="badge-live">Sheets 연결됨</div>
+  </div>
+</header>
+
+<div class="layout">
+  <!-- SIDEBAR -->
+  <nav class="sidebar">
+    <div class="nav-label">메인</div>
+    <div class="nav-item active" onclick="showPage('dashboard')">
+      <span class="nav-icon">🏠</span> 대시보드
+    </div>
+    <div class="nav-label">재고</div>
+    <div class="nav-item" onclick="showPage('inbound')">
+      <span class="nav-icon">📥</span> 입고 등록
+    </div>
+    <div class="nav-item" onclick="showPage('outbound')">
+      <span class="nav-icon">📤</span> 출고 등록
+    </div>
+    <div class="nav-item" onclick="showPage('stock')">
+      <span class="nav-icon">🗃️</span> 재고 현황
+    </div>
+    <div class="nav-label">자산</div>
+    <div class="nav-item" onclick="showPage('assets')">
+      <span class="nav-icon">🗺️</span> 자산 현황
+    </div>
+    <div class="nav-item" onclick="showPage('serials')">
+      <span class="nav-icon">🏷️</span> 시리얼 관리
+    </div>
+    <div class="nav-label">이력</div>
+    <div class="nav-item" onclick="showPage('history')">
+      <span class="nav-icon">📋</span> 입출고 이력
+    </div>
+  </nav>
+
+  <!-- MAIN CONTENT -->
+  <main class="main">
+
+    <!-- DASHBOARD -->
+    <div id="page-dashboard" class="page active">
+      <div class="flex items-center justify-between mb-4">
+        <h1 style="font-size:1.3rem;font-weight:700;">대시보드</h1>
+        <span id="dashDate" class="text-xs text-muted"></span>
+      </div>
+
+      <!-- Google Sheets Setup -->
+      <div class="setup-box" id="sheetsSetupBox">
+        <div class="setup-title">🔗 Google Sheets 연동 상태</div>
+        <div id="sheetsConnected" class="connected-badge">✅ Google Apps Script 연결됨 — 입출고 데이터가 자동으로 시트에 기록됩니다</div>
+        <div style="margin-top:0.75rem;" class="alert alert-success">
+          📊 연동된 시트: <b>김포 MFC 향균케어 재고관리장</b> — 입고/출고/회수 등록 시 자동 동기화
+        </div>
+      </div>
+
+      <div class="stat-grid" id="statGrid"></div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;">
+        <div class="section">
+          <div class="section-header">
+            <span class="section-title">📊 향기별 재고</span>
+          </div>
+          <div class="section-body" id="fragStockTable"></div>
+        </div>
+        <div class="section">
+          <div class="section-header">
+            <span class="section-title">⚠️ 재고 부족 경보</span>
+          </div>
+          <div class="section-body" id="lowStockList"></div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-header">
+          <span class="section-title">📅 최근 입출고 이력</span>
+        </div>
+        <div class="section-body" id="recentHistory"></div>
+      </div>
+    </div>
+
+    <!-- INBOUND -->
+    <div id="page-inbound" class="page">
+      <div class="flex items-center justify-between" style="margin-bottom:1.5rem;">
+        <h1 style="font-size:1.3rem;font-weight:700;">📥 입고 등록</h1>
+        <div class="flex gap-2">
+          <button class="btn btn-ghost btn-sm" id="inTabSingle" onclick="switchInTab('single')" style="border-color:var(--accent);color:var(--accent);">단건 등록</button>
+          <button class="btn btn-ghost btn-sm" id="inTabBulk" onclick="switchInTab('bulk')">대량 등록</button>
+        </div>
+      </div>
+
+      <!-- 단건 등록 -->
+      <div id="inSinglePanel" style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;">
+        <div>
+          <div class="section">
+            <div class="section-header"><span class="section-title">입고 정보 입력</span></div>
+            <div class="section-body">
+              <div class="form-grid">
+                <div class="form-group">
+                  <label>입고일</label>
+                  <input type="date" id="inDate">
+                </div>
+                <div class="form-group">
+                  <label>제품 유형</label>
+                  <select id="inType" onchange="updateInType()">
+                    <option value="향기">향기 카트리지</option>
+                    <option value="기기">방향제 기기</option>
+                  </select>
+                </div>
+                <div class="form-group" id="fragGrp">
+                  <label>향기 선택</label>
+                  <select id="inFrag">
+                    <option value="에어본 (Sky Light)">에어본 - Sky Light</option>
+                    <option value="우드오크 (Woody Breeze)">우드오크 - Woody Breeze</option>
+                    <option value="코튼 유칼리 (Sweet Eucalyptus)">코튼 유칼리 - Sweet Eucalyptus</option>
+                    <option value="코튼 프라임 (Fresh Linen)">코튼 프라임 - Fresh Linen</option>
+                    <option value="파우더향 (Pure Calm)">파우더향 - Pure Calm</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>입고 수량</label>
+                  <input type="number" id="inQty" min="1" value="1">
+                </div>
+                <div class="form-group full">
+                  <label>메모 (선택)</label>
+                  <input type="text" id="inMemo" placeholder="발주 번호, 공급업체 등">
+                </div>
+              </div>
+              <div style="margin-top:1rem;">
+                <button class="btn btn-success" onclick="registerInbound()" style="width:100%;">
+                  ✅ 입고 등록 및 시리얼 발급
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="section" id="serialPreview" style="display:none;">
+            <div class="section-header">
+              <span class="section-title">🏷️ 발급된 시리얼 번호</span>
+              <button class="btn btn-ghost btn-sm no-print" onclick="printSerials()">🖨️ 인쇄</button>
+            </div>
+            <div class="section-body">
+              <div id="serialPreviewGrid" class="serial-grid"></div>
+            </div>
+          </div>
+          <div class="section" id="serialEmpty">
+            <div class="section-body empty-state">
+              <div class="empty-icon">🏷️</div>
+              <p class="text-sm">입고 등록 후 시리얼이 여기에 표시됩니다</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 대량 등록 -->
+      <div id="inBulkPanel" style="display:none;">
+        <div class="alert alert-info" style="margin-bottom:1rem;">
+          💡 향기별로 수량을 한 번에 입력하세요. 비워두면 해당 향기는 등록되지 않습니다.
+        </div>
+        <div class="section">
+          <div class="section-header"><span class="section-title">대량 입고 등록</span></div>
+          <div class="section-body">
+            <div class="form-grid" style="margin-bottom:1.25rem;">
+              <div class="form-group">
+                <label>입고일</label>
+                <input type="date" id="inBulkDate">
+              </div>
+              <div class="form-group">
+                <label>제품 유형</label>
+                <select id="inBulkType">
+                  <option value="향기">향기 카트리지</option>
+                  <option value="기기">방향제 기기</option>
+                </select>
+              </div>
+              <div class="form-group full">
+                <label>메모 (선택)</label>
+                <input type="text" id="inBulkMemo" placeholder="발주 번호, 공급업체 등">
+              </div>
+            </div>
+            <table class="tbl" style="margin-bottom:1.25rem;">
+              <thead>
+                <tr>
+                  <th>향기명</th>
+                  <th>더샵 향기명</th>
+                  <th style="width:160px;">입고 수량</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>에어본</td><td>Sky Light</td><td><input type="number" id="bulk_에어본" min="0" placeholder="0" style="width:120px;padding:0.4rem 0.6rem;"></td></tr>
+                <tr><td>우드오크</td><td>Woody Breeze</td><td><input type="number" id="bulk_우드오크" min="0" placeholder="0" style="width:120px;padding:0.4rem 0.6rem;"></td></tr>
+                <tr><td>코튼 유칼리</td><td>Sweet Eucalyptus</td><td><input type="number" id="bulk_코튼유칼리" min="0" placeholder="0" style="width:120px;padding:0.4rem 0.6rem;"></td></tr>
+                <tr><td>코튼 프라임</td><td>Fresh Linen</td><td><input type="number" id="bulk_코튼프라임" min="0" placeholder="0" style="width:120px;padding:0.4rem 0.6rem;"></td></tr>
+                <tr><td>파우더향</td><td>Pure Calm</td><td><input type="number" id="bulk_파우더향" min="0" placeholder="0" style="width:120px;padding:0.4rem 0.6rem;"></td></tr>
+              </tbody>
+            </table>
+            <button class="btn btn-success" onclick="registerBulkInbound()" style="width:100%;">
+              ✅ 대량 입고 등록 및 시리얼 일괄 발급
+            </button>
+          </div>
+        </div>
+        <div class="section" id="bulkSerialPreview" style="display:none;margin-top:1.5rem;">
+          <div class="section-header">
+            <span class="section-title">🏷️ 일괄 발급된 시리얼 번호</span>
+            <button class="btn btn-ghost btn-sm no-print" onclick="window.print()">🖨️ 전체 인쇄</button>
+          </div>
+          <div class="section-body">
+            <div id="bulkSerialGrid" class="serial-grid"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- OUTBOUND -->
+    <div id="page-outbound" class="page">
+      <div class="flex items-center justify-between" style="margin-bottom:1.5rem;">
+        <h1 style="font-size:1.3rem;font-weight:700;">📤 출고 등록</h1>
+        <div class="flex gap-2">
+          <button class="btn btn-ghost btn-sm" id="outTabSingle" onclick="switchOutTab('single')" style="border-color:var(--accent);color:var(--accent);">단건 등록</button>
+          <button class="btn btn-ghost btn-sm" id="outTabBulk" onclick="switchOutTab('bulk')">대량 등록</button>
+        </div>
+      </div>
+
+      <!-- 단건 등록 -->
+      <div id="outSinglePanel" style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;">
+        <div class="section">
+          <div class="section-header"><span class="section-title">출고 정보 입력</span></div>
+          <div class="section-body">
+            <div class="form-grid">
+              <div class="form-group">
+                <label>출고일</label>
+                <input type="date" id="outDate">
+              </div>
+              <div class="form-group">
+                <label>제품 유형</label>
+                <select id="outType" onchange="updateOutType()">
+                  <option value="향기">향기 카트리지</option>
+                  <option value="기기">방향제 기기</option>
+                </select>
+              </div>
+              <div class="form-group" id="outFragGrp">
+                <label>향기 선택</label>
+                <select id="outFrag">
+                  <option value="에어본 (Sky Light)">에어본 - Sky Light</option>
+                  <option value="우드오크 (Woody Breeze)">우드오크 - Woody Breeze</option>
+                  <option value="코튼 유칼리 (Sweet Eucalyptus)">코튼 유칼리 - Sweet Eucalyptus</option>
+                  <option value="코튼 프라임 (Fresh Linen)">코튼 프라임 - Fresh Linen</option>
+                  <option value="파우더향 (Pure Calm)">파우더향 - Pure Calm</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>수량</label>
+                <input type="number" id="outQty" min="1" value="1">
+              </div>
+              <div class="form-group full">
+                <label>고객명 / 설치처</label>
+                <input type="text" id="outCustomer" placeholder="예: 강남구 00약국">
+              </div>
+              <div class="form-group full">
+                <label>약국 USER-KEY</label>
+                <input type="text" id="outUserKey" placeholder="예: USR-2026-001" style="font-family:'JetBrains Mono',monospace;letter-spacing:0.05em;">
+              </div>
+              <div class="form-group full">
+                <label>설치 주소</label>
+                <input type="text" id="outAddress" placeholder="설치 주소">
+              </div>
+              <div class="form-group" id="outSerialGrp">
+                <label>시리얼 번호 (기기 출고 시)</label>
+                <input type="text" id="outSerial" placeholder="예: HC-2026-001">
+              </div>
+              <div class="form-group full">
+                <label>메모</label>
+                <input type="text" id="outMemo" placeholder="담당자, 계약정보 등">
+              </div>
+            </div>
+            <div style="margin-top:1rem;">
+              <button class="btn btn-primary" onclick="registerOutbound()" style="width:100%;">
+                📤 출고 등록
+              </button>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="section">
+            <div class="section-header"><span class="section-title">현재 재고 확인</span></div>
+            <div class="section-body" id="outboundStockCheck"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 대량 등록 -->
+      <div id="outBulkPanel" style="display:none;">
+        <div class="alert alert-info" style="margin-bottom:1rem;">
+          💡 한 고객에게 여러 향기를 한 번에 출고하거나, 여러 고객에게 일괄 출고할 때 사용하세요.
+        </div>
+        <div class="section">
+          <div class="section-header"><span class="section-title">공통 출고 정보</span></div>
+          <div class="section-body">
+            <div class="form-grid">
+              <div class="form-group">
+                <label>출고일</label>
+                <input type="date" id="outBulkDate">
+              </div>
+              <div class="form-group">
+                <label>제품 유형</label>
+                <select id="outBulkType">
+                  <option value="향기">향기 카트리지</option>
+                  <option value="기기">방향제 기기</option>
+                </select>
+              </div>
+              <div class="form-group full">
+                <label>메모 (선택)</label>
+                <input type="text" id="outBulkMemo" placeholder="일괄 출고 메모">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section" style="margin-top:1rem;">
+          <div class="section-header">
+            <span class="section-title">출고 목록</span>
+            <button class="btn btn-ghost btn-sm" onclick="addBulkOutRow()">+ 행 추가</button>
+          </div>
+          <div class="section-body" style="overflow-x:auto;">
+            <table class="tbl" style="min-width:800px;">
+              <thead>
+                <tr>
+                  <th>고객명 / 설치처</th>
+                  <th>USER-KEY</th>
+                  <th>향기</th>
+                  <th>수량</th>
+                  <th>설치 주소</th>
+                  <th style="width:50px;"></th>
+                </tr>
+              </thead>
+              <tbody id="bulkOutTbody"></tbody>
+            </table>
+          </div>
+          <div style="padding:1rem 1.5rem;border-top:1px solid var(--border);">
+            <button class="btn btn-primary" onclick="registerBulkOutbound()" style="width:100%;">
+              📤 대량 출고 등록
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STOCK -->
+    <div id="page-stock" class="page">
+      <div class="flex items-center justify-between mb-4">
+        <h1 style="font-size:1.3rem;font-weight:700;">🗃️ 재고 현황</h1>
+        <div class="flex gap-2">
+          <button class="btn btn-ghost btn-sm" onclick="exportToSheets()">📊 Sheets로 내보내기</button>
+        </div>
+      </div>
+
+      <div class="month-tabs" id="monthTabs"></div>
+
+      <div class="section">
+        <div class="section-header">
+          <span class="section-title" id="stockTableTitle">월별 입출고 현황</span>
+        </div>
+        <div class="section-body">
+          <table class="tbl" id="stockTable">
+            <thead>
+              <tr>
+                <th>향기명</th>
+                <th>더샵 향기명</th>
+                <th>총 입고</th>
+                <th>총 출고</th>
+                <th>총 회수</th>
+                <th>잔여 재고</th>
+                <th>상태</th>
+              </tr>
+            </thead>
+            <tbody id="stockTbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ASSETS -->
+    <div id="page-assets" class="page">
+      <h1 style="font-size:1.3rem;font-weight:700;margin-bottom:1.5rem;">🗺️ 자산 현황</h1>
+      <div class="stat-grid" id="assetStats"></div>
+      <div class="section">
+        <div class="section-header">
+          <span class="section-title">설치된 기기 목록</span>
+          <input type="text" id="assetSearch" placeholder="🔍 고객명, 주소 검색..." style="width:220px;padding:0.35rem 0.75rem;font-size:0.8rem;" oninput="renderAssets()">
+        </div>
+        <div class="section-body">
+          <table class="tbl">
+            <thead>
+              <tr>
+                <th>시리얼</th>
+                <th>제품</th>
+                <th>고객명/설치처</th>
+                <th>USER-KEY</th>
+                <th>설치 주소</th>
+                <th>출고일</th>
+                <th>상태</th>
+                <th>액션</th>
+              </tr>
+            </thead>
+            <tbody id="assetTbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- SERIALS -->
+    <div id="page-serials" class="page">
+      <div class="flex items-center justify-between mb-4">
+        <h1 style="font-size:1.3rem;font-weight:700;">🏷️ 시리얼 관리</h1>
+        <div class="flex gap-2">
+          <select id="serialFilter" onchange="renderSerials()" style="font-size:0.8rem;padding:0.35rem 0.75rem;">
+            <option value="all">전체</option>
+            <option value="재고">재고 중</option>
+            <option value="출고">출고됨</option>
+          </select>
+          <button class="btn btn-ghost btn-sm no-print" onclick="printAllSerials()">🖨️ 전체 인쇄</button>
+        </div>
+      </div>
+      <div id="serialsGrid" class="serial-grid"></div>
+    </div>
+
+    <!-- HISTORY -->
+    <div id="page-history" class="page">
+      <div class="flex items-center justify-between mb-4">
+        <h1 style="font-size:1.3rem;font-weight:700;">📋 입출고 이력</h1>
+        <div class="flex gap-2">
+          <select id="histTypeFilter" onchange="renderHistory()" style="font-size:0.8rem;padding:0.35rem 0.75rem;">
+            <option value="all">전체</option>
+            <option value="입고">입고</option>
+            <option value="출고">출고</option>
+            <option value="회수">회수</option>
+          </select>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-body">
+          <table class="tbl">
+            <thead>
+              <tr>
+                <th>일자</th>
+                <th>유형</th>
+                <th>제품</th>
+                <th>향기</th>
+                <th>수량</th>
+                <th>고객/메모</th>
+                <th>시리얼</th>
+                <th>Sheets</th>
+              </tr>
+            </thead>
+            <tbody id="historyTbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- MODAL: Return/Recall -->
+<div class="modal-overlay" id="returnModal">
+  <div class="modal">
+    <div class="modal-title">🔄 기기 회수 등록</div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>회수일</label>
+        <input type="date" id="returnDate">
+      </div>
+      <div class="form-group">
+        <label>시리얼 번호</label>
+        <input type="text" id="returnSerial" placeholder="HC-2024-001">
+      </div>
+      <div class="form-group full">
+        <label>회수 사유</label>
+        <input type="text" id="returnReason" placeholder="계약 만료, 고객 요청 등">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('returnModal')">취소</button>
+      <button class="btn btn-primary" onclick="registerReturn()">회수 등록</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast" style="position:fixed;bottom:2rem;right:2rem;z-index:999;display:none;">
+  <div id="toastMsg" style="background:#1e3a5f;border:1px solid var(--border);color:var(--text);padding:0.75rem 1.25rem;border-radius:10px;font-size:0.875rem;box-shadow:0 8px 32px rgba(0,0,0,0.4);">
+  </div>
+</div>
+
+<script>
+// ===================== DATA STORE =====================
+let DB = {
+  settings: { apiKey: '', spreadsheetId: '194V9t5AwGku4Lamai8W-O0szjOn6HuZBCqT_Ck_x2OY', connected: false },
+  transactions: [],
+  serials: [],
+  assets: []
+};
+
+// Load from localStorage
+function loadDB() {
+  const saved = localStorage.getItem('inventoryDB_v2'); // v2 = 새로운 키, 기존 데이터 무시
+  if (saved) {
+    try { DB = JSON.parse(saved); } catch(e) {}
+  }
+  if (!DB.transactions) DB.transactions = [];
+  if (!DB.serials) DB.serials = [];
+  if (!DB.assets) DB.assets = [];
+  if (!DB.settings) DB.settings = { spreadsheetId:'194V9t5AwGku4Lamai8W-O0szjOn6HuZBCqT_Ck_x2OY' };
+  if (DB.transactions.length === 0 && DB.serials.length === 0) seedData();
+}
+function saveDB() {
+  localStorage.setItem('inventoryDB_v2', JSON.stringify(DB));
+}
+
+function seedData() {
+  // 빈 상태로 시작
+  saveDB();
+}
+
+// ===================== FRAGRANCES =====================
+const FRAGRANCES = [
+  { ko:'에어본', en:'Sky Light', key:'에어본 (Sky Light)' },
+  { ko:'우드오크', en:'Woody Breeze', key:'우드오크 (Woody Breeze)' },
+  { ko:'코튼 유칼리', en:'Sweet Eucalyptus', key:'코튼 유칼리 (Sweet Eucalyptus)' },
+  { ko:'코튼 프라임', en:'Fresh Linen', key:'코튼 프라임 (Fresh Linen)' },
+  { ko:'파우더향', en:'Pure Calm', key:'파우더향 (Pure Calm)' },
+];
+
+// ===================== NAVIGATION =====================
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  event.currentTarget && event.currentTarget.classList.add('active');
+
+  if(name==='dashboard') renderDashboard();
+  if(name==='stock') renderStock();
+  if(name==='assets') renderAssets();
+  if(name==='serials') renderSerials();
+  if(name==='history') renderHistory();
+  if(name==='outbound') renderOutboundStock();
+}
+
+// ===================== STATS CALC =====================
+function calcStats(fragsFilter, monthFilter) {
+  const stats = {};
+  FRAGRANCES.forEach(f => {
+    stats[f.key] = { in:0, out:0, recall:0 };
+  });
+
+  DB.transactions.forEach(t => {
+    if (monthFilter && monthFilter !== 'all') {
+      const m = t.date.substring(0,7);
+      if (m !== monthFilter) return;
+    }
+    if (!stats[t.frag]) return;
+    if (t.type==='입고') stats[t.frag].in += t.qty;
+    else if (t.type==='출고') stats[t.frag].out += t.qty;
+    else if (t.type==='회수') stats[t.frag].recall += t.qty;
+  });
+  return stats;
+}
+
+function getTotals() {
+  const stats = calcStats();
+  let totalIn=0, totalOut=0, totalRecall=0, totalStock=0;
+  Object.values(stats).forEach(s => {
+    totalIn += s.in; totalOut += s.out; totalRecall += s.recall;
+    totalStock += (s.in - s.out + s.recall);
+  });
+  return { totalIn, totalOut, totalRecall, totalStock };
+}
+
+// ===================== DASHBOARD =====================
+function renderDashboard() {
+  document.getElementById('dashDate').textContent = new Date().toLocaleDateString('ko-KR', {year:'numeric',month:'long',day:'numeric',weekday:'long'});
+  const { totalIn, totalOut, totalRecall, totalStock } = getTotals();
+
+  document.getElementById('statGrid').innerHTML = `
+    <div class="stat-card stat-blue">
+      <div class="stat-label">총 입고 (카트리지)</div>
+      <div class="stat-value">${totalIn}</div>
+      <div class="stat-sub">누적</div>
+    </div>
+    <div class="stat-card stat-red">
+      <div class="stat-label">총 출고</div>
+      <div class="stat-value">${totalOut}</div>
+      <div class="stat-sub">누적</div>
+    </div>
+    <div class="stat-card stat-green">
+      <div class="stat-label">현재 재고</div>
+      <div class="stat-value">${totalStock}</div>
+      <div class="stat-sub">카트리지</div>
+    </div>
+    <div class="stat-card stat-yellow">
+      <div class="stat-label">설치 기기 수</div>
+      <div class="stat-value">${DB.assets.filter(a=>a.status==='설치중').length}</div>
+      <div class="stat-sub">현재 설치 중</div>
+    </div>
+  `;
+
+  const stats = calcStats();
+  let fragHtml = `<table class="tbl"><thead><tr><th>향기</th><th>입고</th><th>출고</th><th>재고</th><th></th></tr></thead><tbody>`;
+  FRAGRANCES.forEach(f => {
+    const s = stats[f.key];
+    const stock = s.in - s.out + s.recall;
+    const pct = s.in > 0 ? Math.round((stock/s.in)*100) : 0;
+    const color = stock <= 3 ? 'var(--red)' : stock <= 6 ? 'var(--yellow)' : 'var(--green)';
+    fragHtml += `<tr>
+      <td><b>${f.ko}</b><br><span class="text-xs text-muted">${f.en}</span></td>
+      <td>${s.in}</td><td>${s.out}</td>
+      <td style="color:${color};font-weight:700;">${stock}</td>
+      <td style="width:80px;"><div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${color};"></div></div></td>
+    </tr>`;
+  });
+  fragHtml += '</tbody></table>';
+  document.getElementById('fragStockTable').innerHTML = fragHtml;
+
+  let lowHtml = '';
+  FRAGRANCES.forEach(f => {
+    const s = stats[f.key];
+    const stock = s.in - s.out + s.recall;
+    if (stock <= 3) {
+      lowHtml += `<div class="alert alert-warn">⚠️ <b>${f.ko}</b> - 재고 ${stock}개 (발주 필요)</div>`;
+    }
+  });
+  if (!lowHtml) lowHtml = `<div class="alert alert-success">✅ 모든 제품 재고 정상</div>`;
+  document.getElementById('lowStockList').innerHTML = lowHtml;
+
+  const recent = [...DB.transactions].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,5);
+  let recHtml = `<table class="tbl"><thead><tr><th>일자</th><th>유형</th><th>향기</th><th>수량</th><th>메모</th></tr></thead><tbody>`;
+  if (recent.length === 0) recHtml += `<tr><td colspan="5" class="text-muted" style="text-align:center;padding:1.5rem;">이력 없음</td></tr>`;
+  recent.forEach(t => {
+    const chip = t.type==='입고'?'chip-green':t.type==='출고'?'chip-red':'chip-yellow';
+    recHtml += `<tr><td>${t.date}</td><td><span class="chip ${chip}">${t.type}</span></td><td>${t.frag||'-'}</td><td>${t.qty}</td><td>${t.customer||t.memo||'-'}</td></tr>`;
+  });
+  recHtml += '</tbody></table>';
+  document.getElementById('recentHistory').innerHTML = recHtml;
+}
+
+// ===================== INBOUND =====================
+function updateInType() {
+  const t = document.getElementById('inType').value;
+  document.getElementById('fragGrp').style.display = t==='향기' ? '' : 'none';
+}
+
+function generateSerial(type, frag, idx) {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth()+1).padStart(2,'0');
+  const prefix = type==='기기' ? 'HC' : 'CT';
+  const total = DB.serials.filter(s=>s.type===type).length + idx + 1;
+  return `${prefix}-${y}${m}-${String(total).padStart(3,'0')}`;
+}
+
+function registerInbound() {
+  const date = document.getElementById('inDate').value || new Date().toISOString().split('T')[0];
+  const type = document.getElementById('inType').value;
+  const frag = type==='향기' ? document.getElementById('inFrag').value : '기기';
+  const qty = parseInt(document.getElementById('inQty').value) || 1;
+  const memo = document.getElementById('inMemo').value;
+
+  const newSerials = [];
+  for (let i=0; i<qty; i++) {
+    const serial = generateSerial(type, frag, i);
+    const serialObj = { serial, type, frag, inDate:date, status:'재고', product: type==='기기'?'기기':'향기' };
+    DB.serials.push(serialObj);
+    newSerials.push(serialObj);
+  }
+
+  const tx = {
+    id: 'T' + String(DB.transactions.length+1).padStart(4,'0'),
+    date, type:'입고', product:type, frag, qty, memo,
+    serials: newSerials.map(s=>s.serial),
+    synced: false
+  };
+  DB.transactions.push(tx);
+  saveDB();
+
+  // Sync to Sheets
+  syncTransactionToSheets(tx);
+
+  // Show serial preview
+  showSerialPreview(newSerials, frag);
+  showToast(`✅ 입고 등록 완료! 시리얼 ${qty}개 발급`);
+}
+
+function showSerialPreview(serials, frag) {
+  document.getElementById('serialEmpty').style.display = 'none';
+  document.getElementById('serialPreview').style.display = '';
+  const fragObj = FRAGRANCES.find(f=>f.key===frag);
+  const grid = document.getElementById('serialPreviewGrid');
+  grid.innerHTML = serials.map(s => `
+    <div class="serial-card">
+      <div class="sc-brand">향균케어 방향제</div>
+      <div class="sc-name">${fragObj?fragObj.ko:s.frag} <br><small style="font-weight:400;color:#6b7280">${fragObj?fragObj.en:''}</small></div>
+      <div class="sc-num">${s.serial}</div>
+      <div class="sc-date">입고일: ${s.inDate}</div>
+    </div>
+  `).join('');
+}
+
+function printSerials() {
+  window.print();
+}
+
+// ===================== OUTBOUND =====================
+function updateOutType() {
+  const t = document.getElementById('outType').value;
+  document.getElementById('outFragGrp').style.display = t==='향기' ? '' : 'none';
+  document.getElementById('outSerialGrp').style.display = t==='기기' ? '' : 'none';
+}
+
+function renderOutboundStock() {
+  const stats = calcStats();
+  let html = `<table class="tbl"><thead><tr><th>향기</th><th>재고</th></tr></thead><tbody>`;
+  FRAGRANCES.forEach(f => {
+    const s = stats[f.key];
+    const stock = s.in - s.out + s.recall;
+    const color = stock <= 3 ? 'var(--red)' : stock <= 6 ? 'var(--yellow)' : 'var(--green)';
+    html += `<tr><td>${f.ko}</td><td style="color:${color};font-weight:700;">${stock}개</td></tr>`;
+  });
+  html += '</tbody></table>';
+  document.getElementById('outboundStockCheck').innerHTML = html;
+}
+
+function registerOutbound() {
+  const date = document.getElementById('outDate').value || new Date().toISOString().split('T')[0];
+  const type = document.getElementById('outType').value;
+  const frag = type==='향기' ? document.getElementById('outFrag').value : '기기';
+  const qty = parseInt(document.getElementById('outQty').value) || 1;
+  const customer = document.getElementById('outCustomer').value;
+  const userKey = document.getElementById('outUserKey').value;
+  const address = document.getElementById('outAddress').value;
+  const serial = document.getElementById('outSerial').value;
+  const memo = document.getElementById('outMemo').value;
+
+  if (!customer) { showToast('⚠️ 고객명을 입력해주세요', 'warn'); return; }
+
+  const tx = {
+    id: 'T'+String(DB.transactions.length+1).padStart(4,'0'),
+    date, type:'출고', product:type, frag, qty, customer, userKey, address, memo,
+    serials: serial ? [serial] : [],
+    synced: false
+  };
+  DB.transactions.push(tx);
+
+  if (type==='기기' && serial) {
+    const asset = { serial, frag, customer, userKey, address, outDate:date, status:'설치중' };
+    DB.assets.push(asset);
+    const ser = DB.serials.find(s=>s.serial===serial);
+    if (ser) { ser.status='출고'; ser.customer=customer; ser.userKey=userKey; ser.address=address; }
+  }
+
+  saveDB();
+  syncTransactionToSheets(tx);
+  showToast(`✅ 출고 등록 완료! ${customer}에 ${qty}개 출고`);
+  renderOutboundStock();
+}
+
+// ===================== STOCK =====================
+function renderStock() {
+  const months = [...new Set(DB.transactions.map(t=>t.date.substring(0,7)))].sort();
+  const tabs = document.getElementById('monthTabs');
+  tabs.innerHTML = '<button class="month-tab active" onclick="filterStock(\'all\',this)">전체</button>' +
+    months.map(m=>`<button class="month-tab" onclick="filterStock('${m}',this)">${m}</button>`).join('');
+  filterStock('all', tabs.querySelector('.month-tab'));
+}
+
+function filterStock(month, btn) {
+  document.querySelectorAll('.month-tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+
+  const stats = calcStats(null, month);
+  const tbody = document.getElementById('stockTbody');
+  let html = '';
+  let totIn=0,totOut=0,totRec=0,totStock=0;
+
+  FRAGRANCES.forEach(f => {
+    const s = stats[f.key];
+    const stock = s.in - s.out + s.recall;
+    totIn+=s.in; totOut+=s.out; totRec+=s.recall; totStock+=stock;
+    const chip = stock<=3?'chip-red':stock<=6?'chip-yellow':'chip-green';
+    const label = stock<=3?'부족':'정상';
+    html += `<tr ${stock<=3?'class="low-stock-row"':''}>
+      <td><b>${f.ko}</b></td><td>${f.en}</td>
+      <td>${s.in}</td><td>${s.out}</td><td>${s.recall}</td>
+      <td style="font-family:monospace;font-weight:700;">${stock}</td>
+      <td><span class="chip ${chip}">${label}</span></td>
+    </tr>`;
+  });
+  html += `<tr style="border-top:2px solid var(--border);font-weight:700;">
+    <td colspan="2">합계</td><td>${totIn}</td><td>${totOut}</td><td>${totRec}</td>
+    <td style="font-family:monospace;">${totStock}</td><td></td>
+  </tr>`;
+  tbody.innerHTML = html;
+  document.getElementById('stockTableTitle').textContent = month==='all' ? '전체 입출고 현황' : `${month} 입출고 현황`;
+}
+
+// ===================== ASSETS =====================
+function renderAssets() {
+  const search = (document.getElementById('assetSearch')||{}).value||'';
+  const active = DB.assets.filter(a=>a.status==='설치중').length;
+  const recalled = DB.assets.filter(a=>a.status==='회수').length;
+
+  document.getElementById('assetStats').innerHTML = `
+    <div class="stat-card stat-blue"><div class="stat-label">총 설치 기기</div><div class="stat-value">${DB.assets.length}</div></div>
+    <div class="stat-card stat-green"><div class="stat-label">설치 중</div><div class="stat-value">${active}</div></div>
+    <div class="stat-card stat-yellow"><div class="stat-label">회수됨</div><div class="stat-value">${recalled}</div></div>
+  `;
+
+  const filtered = DB.assets.filter(a=>
+    !search || a.customer.includes(search) || (a.address||'').includes(search) || a.serial.includes(search)
+  );
+
+  const tbody = document.getElementById('assetTbody');
+  if (filtered.length===0) {
+    tbody.innerHTML = `<tr><td colspan="7" class="empty-state"><div>설치된 기기 없음</div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = filtered.map(a=>`
+    <tr>
+      <td class="text-mono">${a.serial}</td>
+      <td>${a.frag||'기기'}</td>
+      <td><b>${a.customer}</b></td>
+      <td class="text-mono" style="font-size:0.78rem;color:var(--accent2);">${a.userKey||'-'}</td>
+      <td>${a.address||'-'}</td>
+      <td>${a.outDate||'-'}</td>
+      <td><span class="chip ${a.status==='설치중'?'chip-green':'chip-yellow'}">${a.status}</span></td>
+      <td>
+        ${a.status==='설치중'?`<button class="btn btn-ghost btn-sm" onclick="openReturnModal('${a.serial}')">회수</button>`:''}
+      </td>
+    </tr>
+  `).join('');
+}
+
+// ===================== SERIALS =====================
+function renderSerials() {
+  const filter = document.getElementById('serialFilter').value;
+  const list = filter==='all' ? DB.serials : DB.serials.filter(s=>s.status===filter);
+
+  if (list.length===0) {
+    document.getElementById('serialsGrid').innerHTML = `<div class="empty-state" style="grid-column:1/-1;"><div class="empty-icon">🏷️</div><p>시리얼 없음</p></div>`;
+    return;
+  }
+
+  document.getElementById('serialsGrid').innerHTML = list.map(s=>{
+    const fragObj = FRAGRANCES.find(f=>f.key===s.frag);
+    const color = s.status==='재고' ? '#1d4ed8' : s.status==='출고' ? '#059669' : '#d97706';
+    return `<div class="serial-card">
+      <div class="sc-brand">향균케어 방향제 · ${s.type||'기기'}</div>
+      <div class="sc-name">${fragObj?fragObj.ko:s.frag||'기기'}<br><small style="color:#9ca3af">${fragObj?fragObj.en:''}</small></div>
+      <div class="sc-num" style="color:${color}">${s.serial}</div>
+      <div class="sc-date">입고: ${s.inDate||'-'} · <b>${s.status||'재고'}</b></div>
+      ${s.customer?`<div class="sc-date">→ ${s.customer}</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+function printAllSerials() { window.print(); }
+
+// ===================== HISTORY =====================
+function renderHistory() {
+  const filter = document.getElementById('histTypeFilter').value;
+  const list = filter==='all' ? DB.transactions : DB.transactions.filter(t=>t.type===filter);
+  const sorted = [...list].sort((a,b)=>b.date.localeCompare(a.date));
+
+  const tbody = document.getElementById('historyTbody');
+  if (sorted.length===0) {
+    tbody.innerHTML = `<tr><td colspan="8" class="text-muted" style="text-align:center;padding:1.5rem;">이력 없음</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = sorted.map(t=>{
+    const chip = t.type==='입고'?'chip-green':t.type==='출고'?'chip-red':'chip-yellow';
+    return `<tr>
+      <td>${t.date}</td>
+      <td><span class="chip ${chip}">${t.type}</span></td>
+      <td>${t.product||'-'}</td>
+      <td>${t.frag||'-'}</td>
+      <td>${t.qty}</td>
+      <td>${t.customer||t.memo||'-'}</td>
+      <td class="text-mono" style="font-size:0.75rem;">${(t.serials||[]).join(', ')||'-'}</td>
+      <td>${t.synced?'<span class="chip chip-green">✓</span>':'<span class="chip chip-yellow">대기</span>'}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ===================== GOOGLE SHEETS SYNC =====================
+function connectSheets() {
+  const key = document.getElementById('apiKeyInput').value.trim();
+  const id = document.getElementById('spreadsheetIdInput').value.trim();
+  if (!key) { showToast('⚠️ API Key를 입력해주세요', 'warn'); return; }
+  DB.settings.apiKey = key;
+  DB.settings.spreadsheetId = id;
+  DB.settings.connected = true;
+  saveDB();
+  document.getElementById('sheetsConnected').style.display = 'flex';
+  document.getElementById('syncStatus').textContent = 'Sheets 연결됨';
+  showToast('✅ Google Sheets 연결됨');
+}
+
+function openSettings() {
+  document.getElementById('apiKeyInput').value = DB.settings.apiKey || '';
+  document.getElementById('spreadsheetIdInput').value = DB.settings.spreadsheetId || '';
+}
+
+// ===================== TAB SWITCHES =====================
+function switchInTab(tab) {
+  document.getElementById('inSinglePanel').style.display = tab==='single' ? 'grid' : 'none';
+  document.getElementById('inBulkPanel').style.display = tab==='bulk' ? 'block' : 'none';
+  document.getElementById('inTabSingle').style.cssText = tab==='single' ? 'border-color:var(--accent);color:var(--accent);' : '';
+  document.getElementById('inTabBulk').style.cssText = tab==='bulk' ? 'border-color:var(--accent);color:var(--accent);' : '';
+}
+function switchOutTab(tab) {
+  document.getElementById('outSinglePanel').style.display = tab==='single' ? 'grid' : 'none';
+  document.getElementById('outBulkPanel').style.display = tab==='bulk' ? 'block' : 'none';
+  document.getElementById('outTabSingle').style.cssText = tab==='single' ? 'border-color:var(--accent);color:var(--accent);' : '';
+  document.getElementById('outTabBulk').style.cssText = tab==='bulk' ? 'border-color:var(--accent);color:var(--accent);' : '';
+  if (tab==='bulk') initBulkOutRows();
+}
+
+// ===================== BULK INBOUND =====================
+function registerBulkInbound() {
+  const date = document.getElementById('inBulkDate').value || new Date().toISOString().split('T')[0];
+  const type = document.getElementById('inBulkType').value;
+  const memo = document.getElementById('inBulkMemo').value;
+
+  const targets = [
+    { id:'bulk_에어본', key:'에어본 (Sky Light)' },
+    { id:'bulk_우드오크', key:'우드오크 (Woody Breeze)' },
+    { id:'bulk_코튼유칼리', key:'코튼 유칼리 (Sweet Eucalyptus)' },
+    { id:'bulk_코튼프라임', key:'코튼 프라임 (Fresh Linen)' },
+    { id:'bulk_파우더향', key:'파우더향 (Pure Calm)' },
+  ];
+
+  let totalQty = 0;
+  const allSerials = [];
+
+  targets.forEach(t => {
+    const qty = parseInt(document.getElementById(t.id).value) || 0;
+    if (qty <= 0) return;
+    totalQty += qty;
+
+    const newSerials = [];
+    for (let i=0; i<qty; i++) {
+      const serial = generateSerial(type, t.key, i);
+      const serialObj = { serial, type, frag: t.key, inDate: date, status:'재고', product: type };
+      DB.serials.push(serialObj);
+      newSerials.push(serialObj);
+      allSerials.push(serialObj);
+    }
+
+    const tx = {
+      id: 'T'+String(DB.transactions.length+1).padStart(4,'0'),
+      date, type:'입고', product: type, frag: t.key, qty, memo,
+      serials: newSerials.map(s=>s.serial), synced: false
+    };
+    DB.transactions.push(tx);
+    syncTransactionToSheets(tx);
+    document.getElementById(t.id).value = '';
+  });
+
+  if (totalQty === 0) { showToast('⚠️ 수량을 1개 이상 입력하세요', 'warn'); return; }
+  saveDB();
+
+  // 시리얼 미리보기
+  const grid = document.getElementById('bulkSerialGrid');
+  grid.innerHTML = allSerials.map(s => {
+    const fragObj = FRAGRANCES.find(f=>f.key===s.frag);
+    return `<div class="serial-card">
+      <div class="sc-brand">향균케어 방향제</div>
+      <div class="sc-name">${fragObj?fragObj.ko:s.frag}<br><small style="color:#9ca3af">${fragObj?fragObj.en:''}</small></div>
+      <div class="sc-num">${s.serial}</div>
+      <div class="sc-date">입고일: ${s.inDate}</div>
+    </div>`;
+  }).join('');
+  document.getElementById('bulkSerialPreview').style.display = '';
+  showToast(`✅ 대량 입고 완료! 총 ${totalQty}개 / 시리얼 ${allSerials.length}개 발급`);
+}
+
+// ===================== BULK OUTBOUND =====================
+let bulkOutRows = [];
+
+function initBulkOutRows() {
+  bulkOutRows = [{ id: Date.now() }];
+  renderBulkOutRows();
+}
+
+function addBulkOutRow() {
+  bulkOutRows.push({ id: Date.now() });
+  renderBulkOutRows();
+}
+
+function removeBulkOutRow(id) {
+  bulkOutRows = bulkOutRows.filter(r => r.id !== id);
+  renderBulkOutRows();
+}
+
+function renderBulkOutRows() {
+  const fragOptions = FRAGRANCES.map(f =>
+    `<option value="${f.key}">${f.ko} - ${f.en}</option>`
+  ).join('');
+
+  document.getElementById('bulkOutTbody').innerHTML = bulkOutRows.map(r => `
+    <tr id="bulkRow_${r.id}">
+      <td><input type="text" placeholder="예: 강남구 00약국" style="width:100%;padding:0.4rem 0.6rem;" id="boc_${r.id}"></td>
+      <td><input type="text" placeholder="USR-2026-001" style="width:130px;padding:0.4rem 0.6rem;font-family:monospace;" id="buk_${r.id}"></td>
+      <td><select style="padding:0.4rem 0.6rem;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:6px;" id="bof_${r.id}">${fragOptions}</select></td>
+      <td><input type="number" min="1" value="1" style="width:70px;padding:0.4rem 0.6rem;" id="boq_${r.id}"></td>
+      <td><input type="text" placeholder="주소" style="width:100%;padding:0.4rem 0.6rem;" id="boa_${r.id}"></td>
+      <td><button class="btn btn-ghost btn-sm" onclick="removeBulkOutRow(${r.id})" style="color:var(--red);">✕</button></td>
+    </tr>
+  `).join('');
+}
+
+function registerBulkOutbound() {
+  const date = document.getElementById('outBulkDate').value || new Date().toISOString().split('T')[0];
+  const type = document.getElementById('outBulkType').value;
+  const memo = document.getElementById('outBulkMemo').value;
+
+  let count = 0;
+  bulkOutRows.forEach(r => {
+    const customer = document.getElementById(`boc_${r.id}`)?.value?.trim();
+    const userKey  = document.getElementById(`buk_${r.id}`)?.value?.trim();
+    const frag     = document.getElementById(`bof_${r.id}`)?.value;
+    const qty      = parseInt(document.getElementById(`boq_${r.id}`)?.value) || 0;
+    const address  = document.getElementById(`boa_${r.id}`)?.value?.trim();
+
+    if (!customer || qty <= 0) return;
+    count++;
+
+    const tx = {
+      id: 'T'+String(DB.transactions.length+1).padStart(4,'0'),
+      date, type:'출고', product: type, frag, qty, customer, userKey, address, memo,
+      serials: [], synced: false
+    };
+    DB.transactions.push(tx);
+    syncTransactionToSheets(tx);
+  });
+
+  if (count === 0) { showToast('⚠️ 고객명과 수량을 입력하세요', 'warn'); return; }
+  saveDB();
+  initBulkOutRows();
+  showToast(`✅ 대량 출고 등록 완료! ${count}건 처리됨`);
+}
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwmq9rYRSiGAPsaP0qEEISIkeW26XU4HLecUx7aXQh1pcLYJzLGU1QJ7xjnQTzF-0YZ/exec';
+
+async function syncTransactionToSheets(tx) {
+  try {
+    // 월별 시트명 결정 (예: 2025년 3월)
+    const [y, m] = tx.date.split('-');
+    const sheetName = `${y}년 ${parseInt(m)}월`;
+
+    const row = [
+      tx.id,
+      tx.date,
+      tx.type,
+      tx.product || '',
+      tx.frag || '',
+      tx.qty,
+      tx.customer || '',
+      tx.address || '',
+      tx.memo || '',
+      (tx.serials || []).join(', ')
+    ];
+
+    const res = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      body: JSON.stringify({ sheetName, row })
+    });
+
+    const result = await res.json();
+    if (result.status === 'ok') {
+      tx.synced = true;
+      updateSyncBadge(true);
+      showToast('📊 Sheets 동기화 완료!');
+    } else {
+      throw new Error('sync failed');
+    }
+    saveDB();
+  } catch(e) {
+    tx.synced = false;
+    saveDB();
+    showToast('⚠️ Sheets 동기화 실패 (나중에 재시도)', 'warn');
+  }
+}
+
+async function exportToSheets() {
+  const pending = DB.transactions.filter(t => !t.synced);
+  if (pending.length === 0) { showToast('✅ 모두 이미 동기화됨'); return; }
+  showToast(`📊 ${pending.length}건 Sheets로 내보내는 중...`);
+  for (const tx of pending) {
+    await syncTransactionToSheets(tx);
+    await new Promise(r => setTimeout(r, 400));
+  }
+  showToast('✅ 모든 미동기화 데이터 Sheets 전송 완료');
+}
+
+function updateSyncBadge(ok) {
+  const el = document.getElementById('syncStatus');
+  if (el) el.textContent = ok ? 'Sheets 연결됨' : 'Sheets 연결됨';
+}
+
+// ===================== RETURN MODAL =====================
+function openReturnModal(serial) {
+  document.getElementById('returnSerial').value = serial || '';
+  document.getElementById('returnDate').value = new Date().toISOString().split('T')[0];
+  document.getElementById('returnModal').classList.add('open');
+}
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+function registerReturn() {
+  const serial = document.getElementById('returnSerial').value;
+  const date = document.getElementById('returnDate').value;
+  const reason = document.getElementById('returnReason').value;
+
+  const asset = DB.assets.find(a=>a.serial===serial);
+  if (asset) asset.status = '회수';
+  const ser = DB.serials.find(s=>s.serial===serial);
+  if (ser) ser.status = '회수';
+
+  const tx = {
+    id:'T'+String(DB.transactions.length+1).padStart(4,'0'),
+    date, type:'회수', product:'기기', frag:'기기', qty:1, memo:reason, serials:[serial], synced:false
+  };
+  DB.transactions.push(tx);
+  saveDB();
+  syncTransactionToSheets(tx);
+  closeModal('returnModal');
+  renderAssets();
+  showToast(`✅ ${serial} 회수 등록 완료`);
+}
+
+// ===================== TOAST =====================
+function showToast(msg, type) {
+  const el = document.getElementById('toast');
+  const msgEl = document.getElementById('toastMsg');
+  msgEl.textContent = msg;
+  msgEl.style.borderColor = type==='warn' ? 'var(--yellow)' : type==='error' ? 'var(--red)' : 'var(--border)';
+  el.style.display = 'block';
+  setTimeout(()=>{ el.style.display='none'; }, 3000);
+}
+
+// ===================== PASSWORD LOCK =====================
+function checkPW() {
+  const input = document.getElementById('pwInput').value;
+  if (input === 'TheSHOP2026') {
+    document.getElementById('lockScreen').style.display = 'none';
+    sessionStorage.setItem('unlocked', '1');
+  } else {
+    const err = document.getElementById('pwError');
+    err.textContent = '비밀번호가 올바르지 않습니다.';
+    document.getElementById('pwInput').value = '';
+    document.getElementById('pwInput').style.borderColor = '#ef4444';
+    setTimeout(() => {
+      err.textContent = '';
+      document.getElementById('pwInput').style.borderColor = '#1e3a5f';
+    }, 2000);
+  }
+}
+
+// ===================== INIT =====================
+document.getElementById('inDate').value = new Date().toISOString().split('T')[0];
+document.getElementById('outDate').value = new Date().toISOString().split('T')[0];
+document.getElementById('inBulkDate').value = new Date().toISOString().split('T')[0];
+document.getElementById('outBulkDate').value = new Date().toISOString().split('T')[0];
+if (sessionStorage.getItem('unlocked') === '1') {
+  document.getElementById('lockScreen').style.display = 'none';
+}
+loadDB();
+renderDashboard();
+</script>
+</body>
+</html>
